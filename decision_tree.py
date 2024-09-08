@@ -48,7 +48,7 @@ class DecisionTree:
         return potential_splits_all
     
     def _find_best_split(self,data,potential_splits):
-        besties = {'feature_index':None,'threshold':None,'condition_mark':None,
+        bests = {'feature_index':None,'threshold':None,'condition_mark':None,
                    'information_gain':-float("inf"),'impurity':None,'left_idxs':None,'right_idxs':None}
         
         labels = data[:,-1]
@@ -68,13 +68,13 @@ class DecisionTree:
                 left_idxs = np.where(cond)[0]
                 right_idxs = np.where(~cond)[0]
                 information_gain,impurity = self._calculate_information_gain(labels, left_idxs, right_idxs)  
-                if information_gain > besties['information_gain']:
+                if information_gain > bests['information_gain']:
                     dct = {'feature_index':feature_idx,'threshold':threshold,
                            'condition_mark':condition_mark,'information_gain':information_gain,'impurity':impurity,
                            'left_idxs':left_idxs,'right_idxs':right_idxs}
-                    besties.update(dct)
+                    bests.update(dct)
         
-        return besties 
+        return bests 
                    
                     
     def _calculate_information_gain(self,labels, left_idxs, right_idxs):
@@ -117,15 +117,15 @@ class DecisionTree:
             return Node(label=leaf_label)
         else:
             potential_splits = self._get_potential_splits(data)
-            besties = self._find_best_split(data,potential_splits)
+            bests = self._find_best_split(data,potential_splits)
 
-            left_tree = self._build_tree(data = data[besties['left_idxs']],depth=depth+1)
-            right_tree = self._build_tree(data = data[besties['right_idxs']],depth = depth+1)
+            left_tree = self._build_tree(data = data[bests['left_idxs']],depth=depth+1)
+            right_tree = self._build_tree(data = data[bests['right_idxs']],depth = depth+1)
             
-            return Node(feature_index=besties['feature_index'],threshold=besties['threshold'],
-                        condition_mark=besties['condition_mark'],left=left_tree,right=right_tree,
-                        score=besties['impurity'],criterion=self.criterion,
-                        information_gain=besties['information_gain'])
+            return Node(feature_index=bests['feature_index'],threshold=bests['threshold'],
+                        condition_mark=bests['condition_mark'],left=left_tree,right=right_tree,
+                        score=bests['impurity'],criterion=self.criterion,
+                        information_gain=bests['information_gain'])
         
     def fit(self,X,y):
         data = np.column_stack((X,y))
