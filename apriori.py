@@ -1,86 +1,113 @@
 from itertools import combinations
-from collections import defaultdict
 
 class Apriori:
-    def __init__(self,transactions:list,min_support=0.2,itemset_limit=5):
+    def __init__(self, min_support, min_confidence, itemset_limit=None):
         self.min_support = min_support
-        self.itemset_limit = itemset_limit 
-        self.transactions = transactions
-        self.frequent_itemsets = []
-        
-    def _create_initial_candidates(self):
-        """Create one items initial candidates."""
-        print(f"Get candidates for length 1.")
-        single_items = set(frozenset([item]) for transaction in self.transactions for item in transaction)
-        return single_items
+        self.min_confidence = min_confidence
+        self.itemset_limit = itemset_limit
+        self.frequent_itemsets = {}  # Changed from set() to dict() to store support values
+        self.rules = []
 
-        
-    def _get_support(self,itemset):
-        """Calculate the support of a given itemset."""
-        itemset = frozenset(itemset)
-        counts = [True  if itemset.issubset(transaction) else False for transaction in self.transactions]
-        return sum(counts) / len(transactions)
-        
-    def _get_frequent_itemsets(self,candidates):
-        """Filter candidates to find frequent itemsets."""
-        print("Get frequent itemsets.")
-        frequent_itemsets = []
-        
-        candidate_counts = defaultdict(int)
-        for candidate in candidates:
-            candidate_support = self._get_support(candidate)
-            if candidate_support >= self.min_support:
-                frequent_itemsets.append((candidate,candidate_support))        
-        
-        print("Ok!",end='\n\n')
-        return frequent_itemsets
+    def _find_unique_items_in_all_transactions(self):
+        unique_items = set(item for transaction in self.transactions_list for item in transaction)
+        return unique_items
 
-    
-    def _get_candidates(self,previous_frequent_itemsets, length):
-        """Generate candidate itemsets of a specific length."""
-        print(f"Get candidates for length {length}")
-        candidates = []
-        frequent_items = set()
-        for itemset, _ in previous_frequent_itemsets:
-            frequent_items.update(itemset)
-    
-        for comb in combinations(frequent_items, length):
-            candidates.append(comb)
-        
+    def _find_candidates(self, elem_count):
+        # Generate itemset combinations of size `elem_count`
+        candidates = set(frozenset(itemset) for itemset in combinations(self.unique_items, elem_count))
         return candidates
 
-    def _update_frequent_itemsets(self,current_frequent_itemsets):
-        if current_frequent_itemsets not in self.frequent_itemsets:
-            self.frequent_itemsets.append(current_frequent_itemsets)
-            
-    def fit(self):
-        initial_candidates = self._create_initial_candidates() # single items
-        current_frequent_itemsets = self._get_frequent_itemsets(candidates=initial_candidates)
-        
-        k = 2
-        while len(current_frequent_itemsets) > 0:
-            print(f"{k} itemset combination is searching...")
-            
-            if k > self.itemset_limit:
-                print("Itemset limit reached.")
-                break 
-                
-            # Add the current frequent itemsets to the list
-            self._update_frequent_itemsets(current_frequent_itemsets)
-            # Generate next-level candidates from the current frequent itemsets
-            candidates = self._get_candidates(current_frequent_itemsets, k)
-            
-            # If no more candidates can be generated, stop the loop
-            if not candidates:
-                print("No more candidates can be generated.")
-                break
-            
-            # Filter candidates to get frequent itemsets
-            current_frequent_itemsets = self._get_frequent_itemsets(candidates)
+    def _prepare_transactions(self, transactions):
+        self.transactions = transactions
+        self.transactions_list = [set(t) for t in transactions]  # Convert each transaction to a set
+        self.unique_items = self._find_unique_items_in_all_transactions()
+        # Set itemset limit to the number of unique items if not provided
+        self.itemset_limit = len(self.unique_items) if self.itemset_limit is None else self.itemset_limit
 
-            # Increment k to move to the next level of itemsets
-            k += 1
+    def _calculate_support(self, itemset):
+        transaction_count = len(self.transactions_list)
+        subset_count = sum(1 for transaction in self.transactions_list if itemset.issubset(transaction))
+        support = subset_count / transaction_count
+        return support
+
+    def _filter_frequent_itemsets(self, candidates):
+        frequent_itemsets = {}
+        for candidate in candidates:
+            support = self._calculate_support(candidate)
+            if support >= self.min_support:
+                frequent_itemsets[candidate] = support
+        return frequent_itemsets
+
+    def _find_frequent_itemsets(self):
+        for k in range(1, self.itemset_limit + 1):
+            print("Checking itemsets of length:", k)
+            candidates = self._find_candidates(k)
+            curr_itemsets = self._filter_frequent_itemsets(candidates)
             
+            if not curr_itemsets:
+                print("No frequent itemsets found for size", k)
+                break  # Exit if no frequent itemsets are found
+            
+            print("Current frequent itemsets:", curr_itemsets)
+            self.frequent_itemsets.update(curr_itemsets)
+
+    def _generate_association_rules(self):
+        """Generate all possible association rules from the frequent itemsets."""
+        for itemset, itemset_support in self.frequent_itemsets.items():
+            if len(itemset) < 2:
+                continue  # No rules can be generated from single-item sets
+            
+            # Generate all non-empty subsets of the itemset (possible antecedents)
+            for antecedent_size in range(1, len(itemset)):
+                for antecedent in combinations(itemset, antecedent_size):
+                    antecedent = frozenset(antecedent)
+                    consequent = itemset - antecedent
+                    
+                    if consequent:
+                        antecedent_support = self.frequent_itemsets.get(antecedent, 0)
+                        if antecedent_support > 0:  # To avoid division by zero
+                            confidence = itemset_support / antecedent_support
+                            if confidence >= self.min_confidence:
+                                rule = {
+                                    'antecedent': antecedent,
+                                    'consequent': consequent,
+                                    'confidence': confidence,
+                                    'support': itemset_support
+                                }
+                                self.rules.append(rule)
+
+    def fit(self, transactions):
+        self._prepare_transactions(transactions)
+        self._find_frequent_itemsets()
+        self._generate_association_rules()
+
     def get_frequent_itemsets(self):
-        """Return all the frequent itemsets with their support values."""
-        return self.frequent_itemsets    
+        if not self.frequent_itemsets:
+            print("Frequent itemsets not found. Please fit the model first.")
+        return self.frequent_itemsets
+
+    def get_rules(self):
+        if not self.rules:
+            print("No rules generated. Please fit the model and generate association rules.")
+        return self.rules
+
+
+if __name__ == "__main__":
+    # Example usage:
+    apr = Apriori(min_support=0.3, min_confidence=0.5)
+    
+    TRANSACTIONS =  [
+        ['Action', 'Sci-Fi'],
+        ['Action', 'Adventure'],
+        ['Action', 'Adventure', 'Sci-Fi'],
+        ['Drama', 'Romance'],
+        ['Action', 'Sci-Fi'],
+    ]
+    apr.fit(TRANSACTIONS)
+    frequent_itemsets = apr.get_frequent_itemsets()
+    rules = apr.get_rules()
+    
+    print("Frequent Itemsets:", frequent_itemsets)
+    print("Association Rules:")
+    for rule in rules:
+        print(f"Rule: {rule['antecedent']} -> {rule['consequent']}, Confidence: {rule['confidence']:.2f}, Support: {rule['support']:.2f}")
