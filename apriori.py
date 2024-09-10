@@ -96,14 +96,23 @@ if __name__ == "__main__":
     # Example usage:
     apr = Apriori(min_support=0.3, min_confidence=0.5)
     
-    TRANSACTIONS =  [
+    transactions_by_genre =  [
         ['Action', 'Sci-Fi'],
         ['Action', 'Adventure'],
         ['Action', 'Adventure', 'Sci-Fi'],
         ['Drama', 'Romance'],
         ['Action', 'Sci-Fi'],
     ]
-    apr.fit(TRANSACTIONS)
+    
+    transactions_by_name = [
+    ['The Matrix', 'Inception', 'Interstellar'],
+    ['Inception', 'Interstellar'],
+    ['The Matrix', 'Interstellar'],
+    ['The Matrix', 'Inception'],
+    ['Inception', 'Interstellar']
+    ]
+    
+    apr.fit(transactions_by_genre)
     frequent_itemsets = apr.get_frequent_itemsets()
     rules = apr.get_rules()
     
