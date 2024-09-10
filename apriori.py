@@ -91,18 +91,8 @@ class Apriori:
             print("No rules generated. Please fit the model and generate association rules.")
         return self.rules
 
-
 if __name__ == "__main__":
-    # Example usage:
-    apr = Apriori(min_support=0.3, min_confidence=0.5)
-    
-    transactions_by_genre =  [
-        ['Action', 'Sci-Fi'],
-        ['Action', 'Adventure'],
-        ['Action', 'Adventure', 'Sci-Fi'],
-        ['Drama', 'Romance'],
-        ['Action', 'Sci-Fi'],
-    ]
+    apr = Apriori(min_support=0.3, min_confidence=0.7)
     
     transactions_by_name = [
     ['The Matrix', 'Inception', 'Interstellar'],
